@@ -23,9 +23,14 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 #panels.animating{transition:transform .35s cubic-bezier(.25,.46,.45,.94)}
 .panel{width:100vw;height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:0 20px;padding-top:calc(env(safe-area-inset-top,0px) + 24px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 80px)}
 
-#nav-dots{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px)+16px);left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:100}
-.ndot{width:7px;height:7px;border-radius:50%;background:var(--border);transition:all .3s;cursor:pointer}
-.ndot.active{width:22px;border-radius:4px;background:var(--orange)}
+#tab-bar{position:fixed;bottom:0;left:0;right:0;height:calc(58px + env(safe-area-inset-bottom,0px));background:#111;border-top:1px solid var(--border);display:flex;align-items:flex-start;padding-top:8px;z-index:100}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.tab-label{font-size:10px;color:#555;transition:color .2s}
+.tab-item.active .tab-label{color:var(--orange)}
+.tab-item svg path{stroke:#555;transition:stroke .2s}
+.tab-item svg rect{fill:#555;transition:fill .2s}
+.tab-item.active svg path{stroke:var(--orange)}
+.tab-item.active svg rect{fill:var(--orange)}
 
 /* HOME */
 .home-inner{display:flex;flex-direction:column;align-items:center}
@@ -192,10 +197,28 @@ canvas{display:block;width:100%}
   </div>
 
 </div>
-<div id="nav-dots">
-  <div class="ndot" data-p="0"></div>
-  <div class="ndot active" data-p="1"></div>
-  <div class="ndot" data-p="2"></div>
+<div id="tab-bar">
+  <div class="tab-item" data-p="0" onclick="goPanel(0)">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke="#555" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M9 12l2 2 4-4" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="tab-label">Tracker</span>
+  </div>
+  <div class="tab-item active" data-p="1" onclick="goPanel(1)">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <path d="M3 12l9-9 9 9M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9" stroke="#ff9500" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="tab-label">Inicio</span>
+  </div>
+  <div class="tab-item" data-p="2" onclick="goPanel(2)">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="13" width="4" height="8" rx="1"/>
+      <rect x="10" y="8" width="4" height="13" rx="1"/>
+      <rect x="17" y="4" width="4" height="17" rx="1"/>
+    </svg>
+    <span class="tab-label">Stats</span>
+  </div>
 </div>
 </div>
 
@@ -584,11 +607,32 @@ function goPanel(n,anim=true){
   pan.classList.toggle('animating',anim)
   if(anim) setTimeout(()=>pan.classList.remove('animating'),380)
   pan.style.transform=`translateX(${-currentPanel*100}vw)`
-  document.querySelectorAll('.ndot').forEach((d,i)=>d.classList.toggle('active',i===currentPanel))
+  document.querySelectorAll('.tab-item').forEach((d,i)=>d.classList.toggle('active',i===currentPanel))
   if(currentPanel===2) renderStats()
 }
 
-document.querySelectorAll('.ndot').forEach(d=>{d.addEventListener('click',()=>goPanel(parseInt(d.dataset.p)))})
+function setupNotifications(){
+  if(!('Notification' in window)) return
+  if(Notification.permission==='granted') scheduleNotifs()
+  else if(Notification.permission!=='denied')
+    Notification.requestPermission().then(p=>{ if(p==='granted') scheduleNotifs() })
+}
+function scheduleNotifs(){
+  const now=new Date()
+  ;[{h:14,m:0},{h:19,m:0}].forEach(({h,m})=>{
+    const t=new Date(); t.setHours(h,m,0,0)
+    const ms=t-now
+    if(ms<=0) return
+    setTimeout(()=>{
+      const done=todayDone()
+      if(done.length<DAILY.length)
+        new Notification('Discipline 🦝',{
+          body:`Llevas ${done.length}/${DAILY.length} metas hoy. ¡No te rajes!`,
+          icon:'assets/raccoon-idle.png'
+        })
+    },ms)
+  })
+}
 
 /* ── STATS ── */
 document.querySelectorAll('.tb').forEach(b=>{
@@ -779,6 +823,7 @@ renderHome()
 goPanel(1,false)
 fireLoop()
 raccoonBreath()
+setupNotifications()
 </script>
 </body>
 </html>
